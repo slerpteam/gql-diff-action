@@ -1,6 +1,6 @@
 const core = require("@actions/core");
 const github = require("@actions/github");
-const {getDiff} = require("graphql-schema-diff");
+const { getDiff } = require("graphql-schema-diff");
 const path = require("path");
 
 const header = core.getInput("header");
@@ -12,26 +12,28 @@ function resolveHome(filepath) {
     return filepath;
 }
 
+core.info("Slerp fork.");
+
 const oldSchema = resolveHome(core.getInput("old-schema"));
 const newSchema = resolveHome(core.getInput("new-schema"));
 
-getDiff(oldSchema, newSchema).then(async result => {
-    const {repo:{owner, repo}, payload: {pull_request: {number}}} = github.context;
+getDiff(oldSchema, newSchema, { inputValueDeprecation: false }).then(async result => {
+    const { repo: { owner, repo }, payload: { pull_request: { number } } } = github.context;
     const kit = github.getOctokit(core.getInput("token"));
 
-    const {data: comments} = await kit.issues.listComments({
+    const { data: comments } = await kit.issues.listComments({
         owner,
         repo,
         issue_number: number
     });
-    
+
     core.info(JSON.stringify(comments, null, 2))
 
     const existing = comments.find(comment => comment.body.startsWith(header));
-    
+
     if (result) {
         const breaking = result.breakingChanges.length === 0 ? "" : `
-### 🚨 Breaking Changes 
+### 🚨 Breaking Changes
 ${result.breakingChanges.map(x => " - " + x.description).join("\n")}
         `
 
@@ -63,7 +65,7 @@ ${dangerous}
                 comment_id: existing.id,
                 body,
             });
-            
+
         } else {
             await kit.issues.createComment({
                 owner,
@@ -72,19 +74,22 @@ ${dangerous}
                 body,
             });
         }
+
+        if (result.breakingChanges.length > 0) {
+            core.setFailed("Schema changes detected.");
+        }
     } else {
         core.info("No schema changes.");
-        
+
         if (existing) {
             await kit.issues.deleteComment({
                 owner,
                 repo,
                 comment_id: existing.id
             });
-            
-            
+
+
             core.info("Deleted comment.")
         }
     }
 }).catch((err) => core.setFailed(err.message));
-    
