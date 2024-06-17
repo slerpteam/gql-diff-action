@@ -12,8 +12,6 @@ function resolveHome(filepath) {
     return filepath;
 }
 
-core.info("Slerp fork.");
-
 const oldSchema = resolveHome(core.getInput("old-schema"));
 const newSchema = resolveHome(core.getInput("new-schema"));
 
@@ -73,10 +71,6 @@ ${dangerous}
                 issue_number: number,
                 body,
             });
-        }
-
-        if (result.breakingChanges.length > 0) {
-            core.setFailed("Schema changes detected.");
         }
     } else {
         core.info("No schema changes.");
